@@ -261,7 +261,7 @@ def compute_par_levels(
     if cat_path and cat_path.exists() and "Product #" in out.columns:
         cat_df = pd.read_excel(cat_path)
         if "category" in cat_df.columns:
-            cat_df["category"] = cat_df["category"].fillna(method="ffill")
+            cat_df["category"] = cat_df["category"].ffill()
         if "Product #" in cat_df.columns:
             cat_df["Product #"] = cat_df["Product #"].astype(str).str.strip().str.upper()
             cat_map = dict(zip(cat_df["Product #"], cat_df.get("category", "")))
@@ -272,7 +272,7 @@ def compute_par_levels(
     if cat_safety_path and cat_safety_path.exists():
         cs = pd.read_excel(cat_safety_path)
         if {"category", "safety_pct"}.issubset(cs.columns):
-            cs["category"] = cs["category"].astype(str).stripped().str.strip()  # robustness
+            cs["category"] = cs["category"].astype(str).str.strip()  # robustness
             cs["safety_pct"] = pd.to_numeric(cs["safety_pct"], errors="coerce").fillna(0.0)
             cat_safety_map = dict(zip(cs["category"], cs["safety_pct"]))
         else:
