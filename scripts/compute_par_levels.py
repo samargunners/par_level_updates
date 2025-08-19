@@ -172,8 +172,20 @@ def read_wizard(xls_path: Path, sheet) -> pd.DataFrame:
     raw = pd.read_excel(xls_path, sheet_name=sheet, header=None)
     cols_l0 = raw.iloc[lvl0].astype(str).tolist()
     cols_l1 = raw.iloc[lvl1].astype(str).tolist()
+    print("[DEBUG] cols_l0:", cols_l0)
+    print("[DEBUG] cols_l1:", cols_l1)
+    # Check for recursive or malformed objects
+    for i, (l0, l1) in enumerate(zip(cols_l0, cols_l1)):
+        if isinstance(l0, (list, tuple)) and l0 is l0:
+            print(f"[ERROR] Recursive object detected in cols_l0 at index {i}: {l0}")
+        if isinstance(l1, (list, tuple)) and l1 is l1:
+            print(f"[ERROR] Recursive object detected in cols_l1 at index {i}: {l1}")
     data = raw.iloc[lvl1 + 1:].copy()
-    data.columns = pd.MultiIndex.from_tuples(list(zip(cols_l0, cols_l1)))
+    try:
+        data.columns = pd.MultiIndex.from_tuples(list(zip(cols_l0, cols_l1)))
+    except Exception as e:
+        print(f"[ERROR] Failed to create MultiIndex: {e}")
+        raise
     data = data.dropna(how="all")
     log(f"Wizard read: {len(data)} rows, {len(data.columns)} columns")
     return data
