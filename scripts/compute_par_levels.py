@@ -351,6 +351,33 @@ def compute_par_levels(
             mapped_count = (out["Category"] != "").sum()
     log(f"Category mapped rows: {mapped_count} / {len(out)}")
 
+    # --- Add product mapping columns using crunchtime_product_number ---
+    product_mapping_path = Path("data/product_mapping.xlsx")
+    if product_mapping_path.exists() and "Product #" in out.columns:
+        try:
+            pm_df = pd.read_excel(product_mapping_path)
+            pm_df.columns = [str(c).strip() for c in pm_df.columns]
+            if "crunchtime_product_number" in pm_df.columns:
+                pm_df["crunchtime_product_number"] = pm_df["crunchtime_product_number"].astype(str).str.strip().str.upper()
+                # Map required columns
+                mapping_cols = [
+                    ("crunchtime_vendor_conv", "crunchtime_vendor_conv"),
+                    ("ndcp_item_number", "ndcp_item_number"),
+                    ("ndcp_product_name", "ndcp_product_name")
+                ]
+                for src_col, out_col in mapping_cols:
+                    if src_col in pm_df.columns:
+                        out[out_col] = out["Product #"].map(dict(zip(pm_df["crunchtime_product_number"], pm_df[src_col]))).fillna("")
+                    else:
+                        out[out_col] = ""
+                log(f"Mapped vendor/item/product columns using crunchtime_product_number from product_mapping.xlsx.")
+            else:
+                log("crunchtime_product_number column not found in product_mapping.xlsx.")
+        except Exception as e:
+            warn(f"Could not read product_mapping.xlsx: {e}")
+    else:
+        log("product_mapping.xlsx not found or Product # missing in output.")
+
     # Optional per-category safety
     cat_safety_map: dict[str, float] = {}
     if cat_safety_path and cat_safety_path.exists():
@@ -447,6 +474,7 @@ def compute_par_levels(
 # Save
 # ======================
 def save_output(df: pd.DataFrame, out_path: Path, coverage_days: int) -> None:
+    print("[DEBUG] Output columns:", list(df.columns))
     out_path.parent.mkdir(parents=True, exist_ok=True)
     if str(out_path).lower().endswith(".csv"):
         df.to_csv(out_path, index=False)
